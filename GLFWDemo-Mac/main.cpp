@@ -21,54 +21,69 @@
 #include <GLFW/glfw3.h>
 #include <OpenGL/gl3.h>
 
+std::string shader_basic_vert =
+R"(
+#version 410
+layout (location=0) in vec3 VertexPosition;
+layout (location=1) in vec3 VertexColor;
 
-bool CreateCompileShader( std::string fname, GLenum shaderType, GLuint& shader )
+out vec3 Color;
+
+void main()
 {
-    // Load contents of file
-    std::ifstream inFile( fname.c_str(), std::ios::in );
+    Color = VertexColor;
+    gl_Position = vec4(VertexPosition,1.0);
+}
+)";
 
-    if( !inFile ) {
-        fprintf(stderr, "Error opening file: %s\n", fname.c_str() );
-        return false;
-    }
-    
-    std::stringstream code;
-    code << inFile.rdbuf();
-    inFile.close();
-    std::string codeStr( code.str() );
-    
+
+std::string shader_basic_frag =
+R"(
+#version 410
+
+in vec3 Color;
+layout (location=0) out vec4 FragColor;
+
+void main() {
+    FragColor = vec4(Color, 1.0);
+}
+)";
+
+
+bool CreateCompileShader( std::string code, GLenum shaderType, GLuint& shader )
+{
     // Create the shader object
     shader = glCreateShader( shaderType );
     
     if( 0 == shader ) {
-        fprintf( stderr, "Error creating shader: %s\n", fname.c_str() );
+        fprintf( stderr, "Error creating shader\n" );
         return false;
     }
     
     // Load the source code into the shader object
-    const GLchar* codeArray[] = { codeStr.c_str() };
+    const GLchar* codeArray[] = { code.c_str() };
     glShaderSource( shader, 1, codeArray, NULL );
-
+    
     // Compile the shader
     glCompileShader( shader );
-
+    
     // Check compilation status
     GLint result;
     glGetShaderiv( shader, GL_COMPILE_STATUS, &result );
     if( GL_FALSE == result ) {
         fprintf( stderr, "shader compilation failed!\n" );
-    
+        
         GLint logLen;
         glGetShaderiv( shader, GL_INFO_LOG_LENGTH, &logLen );
-    
+        
         if( logLen > 0 ) {
             char * log = new char[logLen];
-        
+            
             GLsizei written;
             glGetShaderInfoLog( shader, logLen, &written, log );
-        
+            
             fprintf( stderr, "Shader log: \n%s", log );
-        
+            
             delete [] log;
         }
         
@@ -77,7 +92,6 @@ bool CreateCompileShader( std::string fname, GLenum shaderType, GLuint& shader )
     
     return true;
 }
-
 
 bool LinkShader( GLint shader1, GLint shader2 )
 {
@@ -154,11 +168,11 @@ int main(int argc, const char * argv[]) {
     
     // Create a Shader and Compile a Shader
     GLuint vertShader, fragShader;
-    if( !CreateCompileShader( "shader/basic.vert", GL_VERTEX_SHADER, vertShader ) )
-         return -1;
-     
-    if( !CreateCompileShader( "shader/basic.frag", GL_FRAGMENT_SHADER, fragShader ) )
-         return -1;
+    if( !CreateCompileShader( shader_basic_vert, GL_VERTEX_SHADER, vertShader ) )
+        return -1;
+    
+    if( !CreateCompileShader( shader_basic_frag, GL_FRAGMENT_SHADER, fragShader ) )
+        return -1;
     
     if( !LinkShader( vertShader, fragShader ) )
         return -1;
